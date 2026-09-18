@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Candle Comparator — Normal vs Heikin Ashi</title>
+<style>
+  :root{
+    --bg:#0F131A;
+    --panel:#161B24;
+    --panel-2:#1C222D;
+    --line:#262E3B;
+    --text:#E7EAF0;
+    --muted:#7C879A;
+    --bull:#2BB3A3;
+    --bear:#E5615A;
+    --accent:#F2B84B;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;padding:28px 20px 60px;}
+  .wrap{max-width:1280px;margin:0 auto;}
+  header{margin-bottom:22px;}
+  .kicker{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.02em;margin-bottom:6px;}
+  h1{font-size:28px;font-weight:650;margin:0 0 6px;letter-spacing:-0.01em;}
+  .sub{color:var(--muted);font-size:14px;max-width:640px;line-height:1.5;}
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:20px 0;}
+  .toolbar .grp{display:flex;align-items:center;gap:8px;}
+  .toolbar label{font-size:12px;color:var(--muted);font-family:var(--mono);}
+  select,input[type=number],input[type=text]{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:13px;width:82px;}
+  select{width:auto;}
+  button{font-family:var(--sans);font-weight:600;font-size:13px;border-radius:6px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);padding:8px 14px;cursor:pointer;transition:border-color .15s ease, background .15s ease;}
+  button:hover{border-color:#3A4557;background:#212836;}
+  button.primary{background:var(--accent);color:#20180A;border-color:var(--accent);}
+  button.primary:hover{filter:brightness(1.07);}
+  button.ghost{background:transparent;}
+  .spacer{flex:1;}
+  .view-toggle{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  .view-toggle button{border:none;border-radius:0;background:transparent;padding:7px 12px;}
+  .view-toggle button.active{background:var(--accent);color:#20180A;}
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .panels.overlay{grid-template-columns:1fr;}
+  @media (max-width:860px){.panels{grid-template-columns:1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 16px 10px;}
+  .panel h2{font-size:13px;font-family:var(--mono);font-weight:500;margin:0 0 10px;color:var(--muted);display:flex;align-items:center;gap:8px;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}.dot.normal{background:#5B8CFF;}.dot.ha{background:var(--accent);}
+  svg{display:block;width:100%;height:auto;}
+  .tooltip{position:fixed;pointer-events:none;background:#0B0E14;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-family:var(--mono);font-size:11.5px;line-height:1.55;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transition:opacity .08s ease;z-index:50;white-space:nowrap;}
+  .tooltip .row{display:flex;justify-content:space-between;gap:14px;}.tooltip .k{color:var(--muted);}.tooltip .up{color:var(--bull);}.tooltip .dn{color:var(--bear);}
+  .grid-line{stroke:var(--line);stroke-width:1;}.axis-label{fill:var(--muted);font-family:var(--mono);font-size:10px;}
+  .bottom{display:grid;grid-template-columns:340px 1fr;gap:16px;margin-top:16px;}
+  @media (max-width:860px){.bottom{grid-template-columns:1fr;}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;}.card h3{font-size:13px;font-family:var(--mono);color:var(--muted);font-weight:500;margin:0 0 12px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}.field{display:flex;flex-direction:column;gap:4px;}.field label{font-size:11px;color:var(--muted);font-family:var(--mono);}.field input{width:100%;}.add-btn{width:100%;margin-top:6px;}.error{font-size:12px;color:var(--bear);margin-top:8px;min-height:14px;}
+  .list{max-height:230px;overflow-y:auto;border-top:1px solid var(--line);margin-top:14px;}.list-row{display:grid;grid-template-columns:28px repeat(4,1fr) 24px;gap:6px;align-items:center;padding:7px 2px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11.5px;}.list-row .idx{color:var(--muted);}.list-row button{padding:2px 6px;font-size:11px;border:none;background:transparent;color:var(--muted);}.list-row button:hover{color:var(--bear);background:transparent;border:none;}.list-head{color:var(--muted);font-size:10.5px;}
+  .empty{color:var(--muted);font-size:13px;padding:40px 10px;text-align:center;font-family:var(--mono);}
+  footer{margin-top:24px;color:var(--muted);font-size:12px;font-family:var(--mono);}a{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><div class="kicker">// candle comparator</div><h1>Normal vs Heikin Ashi</h1><div class="sub">Build a candle series by hand or generate one, and watch how Heikin Ashi smooths the same price action into cleaner trend blocks.</div></header>
+  <div class="toolbar">
+    <div class="grp"><label for="count">Candles</label><input type="number" id="count" value="40" min="5" max="150"></div>
+    <div class="grp"><label for="trend">Trend</label><select id="trend"><option value="up">Uptrend</option><option value="down">Downtrend</option><option value="chop" selected>Choppy</option></select></div>
+    <div class="grp"><label for="vol">Volatility</label><select id="vol"><option value="low">Low</option><option value="mid" selected>Mid</option><option value="high">High</option></select></div>
+    <button id="genBtn" class="primary">Generate random</button><button id="clearBtn" class="ghost">Clear all</button><div class="spacer"></div>
+    <div class="view-toggle"><button id="sideBtn" class="active">Side by side</button><button id="overlayBtn">Overlay</button></div>
+  </div>
+  <div class="panels" id="panels"><div class="panel"><h2><span class="dot normal"></span>Normal candles</h2><div id="chartNormal"></div></div><div class="panel" id="haPanel"><h2><span class="dot ha"></span>Heikin Ashi</h2><div id="chartHA"></div></div></div>
+  <div class="bottom"><div class="card"><h3>Add candle manually</h3><div class="field-row"><div class="field"><label for="fOpen">Open</label><input type="text" id="fOpen" placeholder="100.00"></div><div class="field"><label for="fHigh">High</label><input type="text" id="fHigh" placeholder="104.50"></div></div><div class="field-row"><div class="field"><label for="fLow">Low</label><input type="text" id="fLow" placeholder="98.20"></div><div class="field"><label for="fClose">Close</label><input type="text" id="fClose" placeholder="102.75"></div></div><button id="addBtn" class="primary add-btn">Add candle</button><div class="error" id="err"></div><div class="list" id="list"></div></div><div class="card"><h3>Hover a candle for OHLC detail</h3><div id="statsBox" style="font-family:var(--mono);font-size:12.5px;color:var(--muted);line-height:1.7;">Generate a series or add candles by hand — stats for the most recent candle in each series will appear here once data exists.</div></div></div>
+  <footer>Data stays in this page only — nothing is sent anywhere. Heikin Ashi close = (O+H+L+C)/4, open = (prev HA open + prev HA close)/2.</footer>
+</div>
+<div class="tooltip" id="tooltip"></div>
+<script>
+(function(){
+  let candles=[]; let overlay=false; const el=id=>document.getElementById(id); const tooltip=el('tooltip');
+  function genSeries(n,trend,vol){const volMap={low:.006,mid:.016,high:.034},v=volMap[vol],drift={up:.0035,down:-.0035,chop:0}[trend];let price=100,out=[];for(let i=0;i<n;i++){const o=price,change=drift+(Math.random()-.5)*v*2,c=o*(1+change),h=Math.max(o,c)*(1+Math.random()*v*.8),l=Math.min(o,c)*(1-Math.random()*v*.8);out.push({o:+o.toFixed(2),h:+h.toFixed(2),l:+l.toFixed(2),c:+c.toFixed(2)});price=c;}return out;}
+  function toHeikinAshi(data){const out=[];let po=null,pc=null;data.forEach((d,i)=>{const c=(d.o+d.h+d.l+d.c)/4,o=i===0?(d.o+d.c)/2:(po+pc)/2;out.push({o,h:Math.max(d.h,o,c),l:Math.min(d.l,o,c),c});po=o;pc=c;});return out;}
+  function renderChart(container,data){container.innerHTML='';if(!data.length){container.innerHTML='<div class="empty">No candles yet</div>';return;}const W=560,H=320,padL=48,padR=10,padT=12,padB=22,innerW=W-padL-padR,innerH=H-padT-padB,n=data.length,cw=innerW/n,bodyW=Math.max(2,cw*.6);let hi=Math.max(...data.map(d=>d.h)),lo=Math.min(...data.map(d=>d.l)),pad=(hi-lo)*.08||1;hi+=pad;lo-=pad;const y=v=>padT+innerH*(1-(v-lo)/(hi-lo)),x=i=>padL+cw*i+cw/2;let grid='';for(let g=0;g<=5;g++){const val=lo+(hi-lo)*g/5,yy=y(val);grid+=`<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" class="grid-line"/><text x="${padL-6}" y="${yy+3}" text-anchor="end" class="axis-label">${val.toFixed(1)}</text>`;}let cs='';data.forEach((d,i)=>{const up=d.c>=d.o,col=up?'var(--bull)':'var(--bear)',xc=x(i),yt=y(d.h),yb=y(d.l),yo=y(d.o),yc=y(d.c),top=Math.min(yo,yc),bh=Math.max(1.4,Math.abs(yo-yc));cs+=`<g class="candle" data-idx="${i}"><line x1="${xc}" y1="${yt}" x2="${xc}" y2="${yb}" stroke="${col}" stroke-width="1.2"/><rect x="${xc-bodyW/2}" y="${top}" width="${bodyW}" height="${bh}" fill="${col}" opacity=".95" rx="1"/><rect x="${xc-bodyW/2-1}" y="${padT}" width="${bodyW+2}" height="${innerH}" fill="transparent"/></g>`;});const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.innerHTML=grid+cs;container.appendChild(svg);svg.querySelectorAll('.candle').forEach(g=>{const i=+g.dataset.idx,d=data[i];g.addEventListener('mousemove',e=>{tooltip.innerHTML=`<div class="row"><span class="k">Candle</span><span>#${i+1}</span></div><div class="row"><span class="k">Open</span><span>${d.o.toFixed(2)}</span></div><div class="row"><span class="k">High</span><span>${d.h.toFixed(2)}</span></div><div class="row"><span class="k">Low</span><span>${d.l.toFixed(2)}</span></div><div class="row"><span class="k">Close</span><span class="${d.c>=d.o?'up':'dn'}">${d.c.toFixed(2)}</span></div>`;tooltip.style.opacity=1;tooltip.style.left=e.clientX+14+'px';tooltip.style.top=e.clientY+14+'px';});g.addEventListener('mouseleave',()=>tooltip.style.opacity=0);});}
+  function renderOverlayChart(container,a,b){container.innerHTML='';if(!a.length){container.innerHTML='<div class="empty">No candles yet</div>';return;}const W=1120,H=340,padL=52,padR=10,padT=12,padB=22,innerW=W-padL-padR,innerH=H-padT-padB,n=a.length,cw=innerW/n,bw=Math.max(2,cw*.34),all=a.concat(b);let hi=Math.max(...all.map(d=>d.h)),lo=Math.min(...all.map(d=>d.l)),pad=(hi-lo)*.08||1;hi+=pad;lo-=pad;const y=v=>padT+innerH*(1-(v-lo)/(hi-lo)),x=i=>padL+cw*i+cw/2;let grid='';for(let g=0;g<=5;g++){const val=lo+(hi-lo)*g/5,yy=y(val);grid+=`<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" class="grid-line"/><text x="${padL-6}" y="${yy+3}" text-anchor="end" class="axis-label">${val.toFixed(1)}</text>`;}function groups(data,off,outline){let s='';data.forEach((d,i)=>{const col=d.c>=d.o?'var(--bull)':'var(--bear)',xc=x(i)+off,yt=y(d.h),yb=y(d.l),yo=y(d.o),yc=y(d.c),top=Math.min(yo,yc),bh=Math.max(1.4,Math.abs(yo-yc));s+=`<line x1="${xc}" y1="${yt}" x2="${xc}" y2="${yb}" stroke="${col}"/><rect x="${xc-bw/2}" y="${top}" width="${bw}" height="${bh}" fill="${outline?'none':col}" stroke="${outline?col:'none'}" stroke-width="1.3" rx="1"/>`;});return s;}const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.innerHTML=grid+groups(a,-bw*.6,true)+groups(b,bw*.6,false);container.appendChild(svg);}
+  function renderList(){const list=el('list');if(!candles.length){list.innerHTML='';return;}let rows='<div class="list-row list-head"><span>#</span><span>O</span><span>H</span><span>L</span><span>C</span><span></span></div>';candles.forEach((d,i)=>{rows+=`<div class="list-row"><span class="idx">${i+1}</span><span>${d.o.toFixed(2)}</span><span>${d.h.toFixed(2)}</span><span>${d.l.toFixed(2)}</span><span>${d.c.toFixed(2)}</span><button data-del="${i}" title="Remove">✕</button></div>`;});list.innerHTML=rows;list.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{candles.splice(+b.dataset.del,1);renderAll();});}
+  function renderStats(){const box=el('statsBox');if(!candles.length){box.textContent='Generate a series or add candles by hand — stats for the most recent candle in each series will appear here once data exists.';return;}const ha=toHeikinAshi(candles),last=candles.at(-1),lh=ha.at(-1);box.innerHTML=`<div style="display:flex;gap:32px;flex-wrap:wrap;"><div><div style="color:var(--text);margin-bottom:4px;">Normal — candle #${candles.length}</div>O ${last.o.toFixed(2)} &nbsp; H ${last.h.toFixed(2)} &nbsp; L ${last.l.toFixed(2)} &nbsp; C ${last.c.toFixed(2)}</div><div><div style="color:var(--text);margin-bottom:4px;">Heikin Ashi — candle #${ha.length}</div>O ${lh.o.toFixed(2)} &nbsp; H ${lh.h.toFixed(2)} &nbsp; L ${lh.l.toFixed(2)} &nbsp; C ${lh.c.toFixed(2)}</div></div>`;}
+  function renderAll(){const ha=toHeikinAshi(candles);if(overlay){renderOverlayChart(el('chartNormal'),candles,ha);el('haPanel').style.display='none';}else{el('haPanel').style.display='';renderChart(el('chartNormal'),candles);renderChart(el('chartHA'),ha);}renderList();renderStats();}
+  el('genBtn').onclick=()=>{const n=Math.min(150,Math.max(5,+el('count').value||40));candles=genSeries(n,el('trend').value,el('vol').value);renderAll();};el('clearBtn').onclick=()=>{candles=[];renderAll();};el('addBtn').onclick=()=>{const vals=['fOpen','fHigh','fLow','fClose'].map(id=>parseFloat(el(id).value)),[o,h,l,c]=vals,err=el('err');if(vals.some(isNaN)){err.textContent='Fill in all four values.';return;}if(h<Math.max(o,c)||l>Math.min(o,c)||h<l){err.textContent='High must be the highest value and Low the lowest.';return;}err.textContent='';candles.push({o,h,l,c});['fOpen','fHigh','fLow','fClose'].forEach(id=>el(id).value='');renderAll();};el('sideBtn').onclick=()=>{overlay=false;el('sideBtn').classList.add('active');el('overlayBtn').classList.remove('active');el('panels').classList.remove('overlay');renderAll();};el('overlayBtn').onclick=()=>{overlay=true;el('overlayBtn').classList.add('active');el('sideBtn').classList.remove('active');el('panels').classList.add('overlay');renderAll();};candles=genSeries(40,'chop','mid');renderAll();
+})();
+</script>
+</body>
+</html>
